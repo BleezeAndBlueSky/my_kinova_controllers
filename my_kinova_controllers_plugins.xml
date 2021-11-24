@@ -1,0 +1,10 @@
+<library path="lib/libmy_kinova_controllers">
+
+  <class name="my_kinova_controllers/MyTrajectoryController" type="my_kinova_controllers::MyTrajectoryController" base_class_type="controller_interface::ControllerBase">
+    <description>
+      The MyTrajectoryController executes joint-space trajectories on a set of joints.
+      This variant represents trajectory segments as quintic splines and sends commands to an effort interface.
+    </description>
+  </class>
+
+</library>

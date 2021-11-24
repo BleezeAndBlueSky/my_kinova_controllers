@@ -47,14 +47,18 @@ private:
 
     Eigen::Matrix<double, 6, 1> getV(States desirStates, States currStates) {
         Eigen::Matrix<double, 6, 1> v1, v2;// = kp_ * getQ(currStates) - kd_ * getQdot(currStates);
-        Eigen::Matrix<double, 6, 1> e = getQ(currStates) - getQ(desirStates);
+        Eigen::Matrix<double, 6, 1> e;// = getQ(currStates) - getQ(desirStates);
         Eigen::Matrix<double, 6, 1> edot = getQdot(currStates) - getQdot(desirStates);
 
+        for(size_t i = 0; i < 6; ++i) {
+            e(i, 0) = angles::shortest_angular_distance(currStates.position[i], desirStates.position[i]); // to - from
+        }
+
         for(size_t i = 0; i < v1.rows(); ++i) {
-            v1(i, 0) = - kp_(i, 0) * e(i, 0);
+            v1(i, 0) = kp_(i, 0) * e(i, 0);
         }
         for(size_t i = 0; i < v2.rows(); ++i) {
-            v2(i, 0) = - kd_(i, 0) * edot(i, 0);
+            v2(i, 0) = kd_(i, 0) * edot(i, 0);
         }
         return v1 + v2 + getQddot(desirStates);
     }

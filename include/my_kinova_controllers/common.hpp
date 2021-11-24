@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include <ros/ros.h>
+#include <angles/angles.h>
 
 namespace my_kinova_controllers {
 
@@ -31,12 +32,12 @@ struct TimeData
     ros::Time     uptime; ///< Controller uptime. Set to zero at every restart.
 };
 
-double normalize_angle(double angle)
-{
-    const double result = fmod(angle + M_PI, 2.0*M_PI);
-    if(result <= 0.0) return result + M_PI;
-    return result - M_PI;
-}
+// double normalize_angle(double angle)
+// {
+//     const double result = fmod(angle + M_PI, 2.0*M_PI);
+//     if(result <= 0.0) return result + M_PI;
+//     return result - M_PI;
+// }
    
 }
 

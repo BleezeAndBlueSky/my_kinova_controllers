@@ -25,9 +25,13 @@
 #include <my_kinova_controllers/common.hpp>
 #include <feedback_linearzation.hpp>
 
-namespace my_kinova_controllers {
+#include <pluginlib/class_list_macros.hpp>
 
 using namespace std;
+
+namespace my_kinova_controllers {
+
+
 
 class MyTrajectoryController : public controller_interface::Controller<hardware_interface::EffortJointInterface>
 {
@@ -296,3 +300,5 @@ protected:
 
 
 }
+
+PLUGINLIB_EXPORT_CLASS( my_kinova_controllers::MyTrajectoryController, controller_interface::ControllerBase)
