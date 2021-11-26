@@ -19,7 +19,7 @@ public:
 
 public:
     States() : position(6), velocity(6), acceleration(6), time_from_start(0.0) {
-
+        
     }
 };
 
