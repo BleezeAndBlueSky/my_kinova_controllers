@@ -22,8 +22,8 @@
 #include <control_msgs/JointControllerState.h>
 #include <control_msgs/JointTrajectoryControllerState.h>
 
-#include <my_kinova_controllers/common.hpp>
-#include <feedback_linearzation.hpp>
+#include "my_kinova_controllers/common.hpp"
+#include "my_kinova_controllers/feedback_linearzation.hpp"
 
 #include <pluginlib/class_list_macros.hpp>
 
@@ -72,8 +72,8 @@ public:
     int system_state_ = UNACITVE;
 
 public:
-    MyTrajectoryController(FeedbackLinearization setPointController) : joints_(6), feedback_linearization_controller_(setPointController), last_state_publish_time_(0) {
-
+    MyTrajectoryController() : joints_(6), last_state_publish_time_(0) {
+        
     }
 
     bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &nh) {
@@ -88,7 +88,7 @@ public:
             }            
         }
         
-        trajectory_command_sub_ = nh.subscribe("command", 1, &MyTrajectoryController::trajectoryCommandCB, this);
+        trajectory_command_sub_ = nh.subscribe<trajectory_msgs::JointTrajectory>("command", 1, &MyTrajectoryController::trajectoryCommandCB, this);
         controller_state_publisher_ptr_.reset(new realtime_tools::RealtimePublisher<control_msgs::JointTrajectoryControllerState>(nh, "state", 1));
         
         {
@@ -192,7 +192,7 @@ public:
     }
 
 protected:
-    void trajectoryCommandCB(trajectory_msgs::JointTrajectoryConstPtr &msg) {
+    void trajectoryCommandCB(const trajectory_msgs::JointTrajectoryConstPtr &msg) {
         ROS_INFO_STREAM("Recieve a trajectory msg. timestamp: " << msg->header.stamp);
 
         if(system_state_ == WORKING) {

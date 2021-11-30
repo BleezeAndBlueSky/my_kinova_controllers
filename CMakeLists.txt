@@ -133,7 +133,14 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/my_kinova_controllers.cpp
 # )
+
+set(MATLAB 
+  "src/matlab/Mq.cpp"
+  "src/matlab/Cqdq_dq.cpp"
+)
+
 add_library(${PROJECT_NAME}
+  ${MATLAB}
   "src/feedback_linearzation.hpp"
   "src/my_trajectory_controller.cpp"
 )

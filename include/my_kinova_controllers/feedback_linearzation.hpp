@@ -91,7 +91,7 @@ private:
         return Mq_;
     }
 
-    Eigen::Matrix<double, 6, 6> getCqdq(States currStates) {
+    Eigen::Matrix<double, 6, 1> getCqdq(States currStates) {
         double th1 = currStates.position[0];
         double th2 = currStates.position[1];
         double th3 = currStates.position[2];
@@ -183,6 +183,16 @@ private:
     }
 
 public:
+    FeedbackLinearization() {
+        Eigen::Matrix<double, 6, 1> kp;
+        Eigen::Matrix<double, 6, 1> kd;
+        kp << 30.0, 30.0, 30.0, 30.0, 30.0, 30.0;
+        kd << 3.0, 3.0, 3.0, 3.0, 3.0, 3.0;
+        kp_ = kp;
+        kd_ = kd;
+    }
+
+
     FeedbackLinearization(Eigen::Matrix<double, 6, 1> kp, Eigen::Matrix<double, 6, 1> kd) : kp_(kp), kd_(kd) {
 
     }
@@ -193,7 +203,7 @@ public:
     }
 
     std::vector<double> computeInput(States desirStates, States currStates) {
-        Eigen::Matrix<double, 6, 1> tau = getMq(currStates) * getV(desirStates, currStates) + getCqdq(currStates) * getQdot(currStates) + getGq(currStates);
+        Eigen::Matrix<double, 6, 1> tau = getMq(currStates) * getV(desirStates, currStates) + getCqdq(currStates) + getGq(currStates);
         
         std::vector<double> results = {tau(0, 0), tau(1, 0), tau(2, 0), tau(3, 0), tau(4, 0), tau(5, 0)};
         return results;

@@ -9,7 +9,7 @@
 //
 
 // Include files
-#include "Mq.h"
+#include "matlab/Mq.h"
 #include <cmath>
 
 // Function Declarations
