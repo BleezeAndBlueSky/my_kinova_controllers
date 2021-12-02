@@ -3,13 +3,13 @@
 // course requirements at degree granting institutions only.  Not for
 // government, commercial, or other organizational use.
 //
-// Mq.h
+// Gq.h
 //
-// Code generation for function 'Mq'
+// Code generation for function 'Gq'
 //
 
-#ifndef MQ_H
-#define MQ_H
+#ifndef GQ_H
+#define GQ_H
 
 // Include files
 #include "matlab/rtwtypes.h"
@@ -17,8 +17,8 @@
 #include <cstdlib>
 
 // Function Declarations
-extern void Mq(double th1, double th2, double th3, double th4, double th5,
-               double th6, double b_Mq[36]);
+extern void Gq(double th2, double th3, double th4, double th5, double th6,
+               double b_Gq[6]);
 
 #endif
-// End of code generation (Mq.h)
+// End of code generation (Gq.h)

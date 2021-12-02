@@ -12,7 +12,7 @@
 #define CQDQ_DQ_H
 
 // Include files
-#include "rtwtypes.h"
+#include "matlab/rtwtypes.h"
 #include <cstddef>
 #include <cstdlib>
 
@@ -20,7 +20,7 @@
 extern void Cqdq_dq(double dth1, double dth2, double dth3, double dth4,
                     double dth5, double dth6, double th1, double th2,
                     double th3, double th4, double th5, double th6,
-                    double b_Cqdq_dq[6]);
+                    double res[6]);
 
 #endif
 // End of code generation (Cqdq_dq.h)

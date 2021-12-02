@@ -136,12 +136,22 @@ include_directories(
 
 set(MATLAB 
   "src/matlab/Mq.cpp"
-  "src/matlab/Cqdq_dq.cpp"
+  # "src/matlab/Gq.cpp"
+  # "src/matlab/Cqdq_dq.cpp"
+  # "src/matlab/Cqdq_dq1.cpp"
+  # "src/matlab/Cqdq_dq2.cpp"
+  # "src/matlab/Cqdq_dq3.cpp"
+  # "src/matlab/Cqdq_dq4.cpp"
+  # "src/matlab/Cqdq_dq5.cpp"
+  # "src/matlab/Cqdq_dq6.cpp"
+  "src/matlab/Mq_s.cpp"
+  "src/matlab/Gq_s.cpp"
+  "src/matlab/Cqdq.cpp"
 )
 
 add_library(${PROJECT_NAME}
   ${MATLAB}
-  "src/feedback_linearzation.hpp"
+  # "src/feedback_linearzation.hpp"
   "src/my_trajectory_controller.cpp"
 )
 target_link_libraries(${PROJECT_NAME}

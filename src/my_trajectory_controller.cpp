@@ -54,6 +54,7 @@ public:
     TimeData old_time_data_;
 
     FeedbackLinearization feedback_linearization_controller_;
+    std::vector<double> joints_input_effort_;
 
     enum control_mode
     {
@@ -72,15 +73,17 @@ public:
     int system_state_ = UNACITVE;
 
 public:
-    MyTrajectoryController() : joints_(6), last_state_publish_time_(0) {
-        
+    MyTrajectoryController() : joints_(6), last_state_publish_time_(0), joints_input_effort_(6) {
+
     }
 
     bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &nh) {
+
+        // cout << "start init." << endl;
         vector<string> joint_names = {"joint_1","joint_2", "joint_3", "joint_4", "joint_5", "joint_6"};
         for(size_t i = 0; i < joint_names.size(); ++i) {
             try{
-                hw->getHandle(joint_names[i]);
+                joints_[i] = hw->getHandle(joint_names[i]);
             }
             catch(...) {
                 ROS_ERROR_STREAM("Could not find joint '" << joint_names[i] << "' in '" << this->getHardwareInterfaceType() << "'.");
@@ -103,10 +106,15 @@ public:
             controller_state_publisher_ptr_->msg_.error.velocities.resize(joints_.size());
             controller_state_publisher_ptr_->unlock();
         }
+
+        // cout << "init successfully." << endl;
         return true;
     }
 
     void update(const ros::Time& time, const ros::Duration& period) {
+        // cout << "period: " << period << endl;
+        // cout << "control_mode_: " << control_mode_ << endl;
+
         trajectory_tmp_ = *(trajectories_container_.readFromRT());
 
         old_time_data_ = *(time_data_.readFromRT());
@@ -126,11 +134,11 @@ public:
         bool check_if_reach_goal = true;
         switch (control_mode_) {
         case HOLD_POSITION:
-            for(size_t i = 0; i < joints_.size(); ++i) {
-                desired_states_.position[i] = current_states_.position[i];
-                desired_states_.velocity[i] = 0;
-                desired_states_.acceleration[i] = 0;
-            }
+            // for(size_t i = 0; i < joints_.size(); ++i) {
+            //     desired_states_.position[i] = current_states_.position[i];
+            //     desired_states_.velocity[i] = 0;
+            //     desired_states_.acceleration[i] = 0;
+            // }
             desired_states_.time_from_start = ros::Duration(0.0);
             current_states_.time_from_start = ros::Duration(0.0);
             break;
@@ -145,28 +153,44 @@ public:
         }
         
         for(size_t i = 0; i < joints_.size(); ++i) {
-            if(!std::abs(desired_states_.position[i] - current_states_.position[i] < 1e-5) || 
-               !std::abs(desired_states_.velocity[i] - current_states_.velocity[i] < 1e-5)) {
+            double abse = std::abs(desired_states_.position[i] - current_states_.position[i]);
+            double absedot = std::abs(desired_states_.velocity[i] - current_states_.velocity[i]);
+            if(!(abse < 1e-2) || !(absedot < 1e-3)) {
                 check_if_reach_goal = false;
+                cout << "i      : " << i << endl;
+                cout << "abse   : " << abse << endl;
+                cout << "absedot: " << absedot << endl;
             }
         }
 
         if(check_if_reach_goal) {
             ROS_INFO("Reach the goal!!");
+
+            if(control_mode_ != HOLD_POSITION) {
+                for(size_t i = 0; i < joints_.size(); ++i) {
+                    desired_states_.position[i] = current_states_.position[i];
+                    desired_states_.velocity[i] = 0;
+                    desired_states_.acceleration[i] = 0;
+                }
+            }
+
             control_mode_ = HOLD_POSITION;
             system_state_ = STANDBY;
+
         }
 
 
-        std::vector<double> joints_input_effort = feedback_linearization_controller_.computeInput(desired_states_, current_states_);
+        joints_input_effort_ = feedback_linearization_controller_.computeInput(desired_states_, current_states_);
         for(size_t i = 0; i < joints_.size(); ++i) {
-            joints_[i].setCommand(joints_input_effort[i]);
+            joints_[i].setCommand(joints_input_effort_[i]);
         }
 
         publishStates(time);
     }
 
     void starting(const ros::Time& time) {
+        // cout << "starting." << endl;
+
         TimeData time_data;
         time_data.time   = time;
         // time_data.uptime = ros::Time(0.0);
@@ -175,16 +199,23 @@ public:
         for(size_t i = 0; i < joints_.size(); ++i) {
             current_states_.position[i] = joints_[i].getPosition();
             current_states_.velocity[i] = joints_[i].getVelocity();
-            desired_states_.position[i] = current_states_.position[i];
+            desired_states_.position[i] = 0;//current_states_.position[i];
             desired_states_.velocity[i] = 0;
+            desired_states_.acceleration[i] = 0;
         }
+        desired_states_.position[0] = 6.661339206542123e-16;
+        desired_states_.position[1] = -0.2600000063638805;
+        desired_states_.position[2] = 2.2699999499313854;
+        desired_states_.position[3] = 3.5527128317683615e-15;
+        desired_states_.position[4] = -0.959999997890085;
+        desired_states_.position[5] = 1.5700000416289583;
 
         trajectory_msgs::JointTrajectory initData;
         trajectories_container_.initRT(initData);
 
         control_mode_ = HOLD_POSITION;
         system_state_ = STANDBY;
-
+        // cout << "start successfully." << endl;
     }
     
     void stopping(const ros::Time& time) {
@@ -284,6 +315,7 @@ protected:
                 controller_state_publisher_ptr_->msg_.actual.positions      = current_states_.position;
                 controller_state_publisher_ptr_->msg_.actual.velocities     = current_states_.velocity;
                 controller_state_publisher_ptr_->msg_.actual.time_from_start = ros::Duration(current_states_.time_from_start);
+                controller_state_publisher_ptr_->msg_.actual.effort = joints_input_effort_;
                 // controller_state_publisher_ptr_->msg_.error.positions       = state_errors_.position;
                 // controller_state_publisher_ptr_->msg_.error.velocities      = state_errors_.velocity;
                 // controller_state_publisher_ptr_->msg_.error.time_from_start = ros::Duration(state_error_.time_from_start);

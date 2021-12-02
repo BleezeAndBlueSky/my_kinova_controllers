@@ -6,8 +6,12 @@
 
 #include <my_kinova_controllers/common.hpp>
 
-#include "matlab/Cqdq_dq.h"
-#include "matlab/Mq.h"
+// #include "matlab/Cqdq_dq.h"
+// #include "matlab/Mq.h"
+// #include "matlab/Gq.h"
+#include "matlab/Cqdq.h"
+#include "matlab/Gq_s.h"
+#include "matlab/Mq_s.h"
 
 using namespace std;
 
@@ -16,6 +20,7 @@ namespace my_kinova_controllers {
 class FeedbackLinearization {
 private:
     Eigen::Matrix<double, 6, 1> kp_, kd_;
+    Eigen::Matrix<double, 6, 1> elast;
 
     Eigen::Matrix<double, 6, 6> getMq(States currStates) {
         double th1 = currStates.position[0];
@@ -27,7 +32,7 @@ private:
 
         Eigen::Matrix<double, 6, 6> Mq_;
         double b_Mq[36];
-        Mq(th1, th2, th3, th4, th5, th6, b_Mq);
+        Mq_s(th1, th2, th3, th4, th5, th6, b_Mq);
         for(int i = 0; i < 6; ++i) {
             for(int j = 0; j < 6; ++j) {
                 Mq_(i, j) = b_Mq[i*6 + j];
@@ -91,7 +96,31 @@ private:
         return Mq_;
     }
 
-    Eigen::Matrix<double, 6, 1> getCqdq(States currStates) {
+    // Eigen::Matrix<double, 6, 1> getCqdq_dq(States currStates) {
+    //     double th1 = currStates.position[0];
+    //     double th2 = currStates.position[1];
+    //     double th3 = currStates.position[2];
+    //     double th4 = currStates.position[3];
+    //     double th5 = currStates.position[4];
+    //     double th6 = currStates.position[5];
+    //     double dth1 = currStates.velocity[0];
+    //     double dth2 = currStates.velocity[1];
+    //     double dth3 = currStates.velocity[2];
+    //     double dth4 = currStates.velocity[3];
+    //     double dth5 = currStates.velocity[4];
+    //     double dth6 = currStates.velocity[5];
+    //     Eigen::Matrix<double, 6, 1> Cqdq_dq_;
+
+    //     double b_Cqdq_dq[6];
+    //     Cqdq_dq(dth1, dth2, dth3, dth4, dth5, dth6, th1, th2, th3, th4, th5, th6, b_Cqdq_dq);
+    //     for(int i = 0; i < 6; ++i) {
+    //         Cqdq_dq_(i, 0) = b_Cqdq_dq[i];
+    //     }
+
+    //     return Cqdq_dq_;
+    // }
+
+    Eigen::Matrix<double, 6, 6> getCqdq(States currStates) {
         double th1 = currStates.position[0];
         double th2 = currStates.position[1];
         double th3 = currStates.position[2];
@@ -104,15 +133,16 @@ private:
         double dth4 = currStates.velocity[3];
         double dth5 = currStates.velocity[4];
         double dth6 = currStates.velocity[5];
-        Eigen::Matrix<double, 6, 1> Cqdq_dq_;
+        Eigen::Matrix<double, 6, 6> Cqdq_;
 
-        double b_Cqdq_dq[6];
-        Cqdq_dq(dth1, dth2, dth3, dth4, dth5, dth6, dth1, dth2, dth3, dth4, dth5, dth6, b_Cqdq_dq);
+        double b_Cqdq[36];
+        Cqdq(dth1, dth2, dth3, dth4, dth5, dth6, th1, th2, th3, th4, th5, th6, b_Cqdq);
         for(int i = 0; i < 6; ++i) {
-            Cqdq_dq_(i, 1) = b_Cqdq_dq[i];
+            for(int j = 0; j < 6; ++j) {
+                Cqdq_(i, j) = b_Cqdq[i*6 + j];
+            }
         }
-
-        return Cqdq_dq_;
+        return Cqdq_;
     }
 
     Eigen::Matrix<double, 6, 1> getGq(States currStates) {
@@ -123,27 +153,14 @@ private:
         double th5 = currStates.position[4];
         double th6 = currStates.position[5];
 
-        Eigen::Matrix<double, 6, 1> Gq;
-        double sin1 = std::sin(th1);
-        double cos1 = std::cos(th1);
-        double sin2 = std::sin(th2);
-        double cos2 = std::cos(th2);
-        double sin3 = std::sin(th3);
-        double cos3 = std::cos(th3);
-        double sin4 = std::sin(th4);
-        double cos4 = std::cos(th4);
-        double sin5 = std::sin(th5);
-        double cos5 = std::cos(th5);
-        double sin6 = std::sin(th6);
-        double cos6 = std::cos(th6);
-        Gq(0, 0) = 0;
-        Gq(1, 0) = 0.973413*cos5*(cos2*sin3 - cos3*sin2) - 13.76917*sin2 - 0.000164052*cos2*cos3 - 0.000432866*cos2 + 6.125472*cos2*sin3 - 6.125472*cos3*sin2 - 0.0000066444*sin5*(cos2*sin3 - cos3*sin2) - 0.000164052*sin2*sin3 + 0.0013769*cos6*(sin5*(cos2*sin3 - cos3*sin2) - cos4*cos5*(cos2*cos3 + sin2*sin3)) - 0.0558698*sin6*(sin5*(cos2*sin3 - cos3*sin2) - cos4*cos5*(cos2*cos3 + sin2*sin3)) + 0.0000066444*cos4*(cos2*cos3 + sin2*sin3) - 0.001581367*sin4*(cos2*cos3 + sin2*sin3) + 0.0000066444*cos4*cos5*(cos2*cos3 + sin2*sin3) + 0.973413*cos4*sin5*(cos2*cos3 + sin2*sin3) + 0.0558698*cos6*sin4*(cos2*cos3 + sin2*sin3) + 0.0013769*sin4*sin6*(cos2*cos3 + sin2*sin3);
-        Gq(2, 0) = 0.000164052*cos2*cos3 - 0.973413*cos5*(cos2*sin3 - cos3*sin2) - 6.125472*cos2*sin3 + 6.125472*cos3*sin2 + 0.0000066444*sin5*(cos2*sin3 - cos3*sin2) + 0.000164052*sin2*sin3 - 0.0013769*cos6*(sin5*(cos2*sin3 - cos3*sin2) - cos4*cos5*(cos2*cos3 + sin2*sin3)) + 0.0558698*sin6*(sin5*(cos2*sin3 - cos3*sin2) - cos4*cos5*(cos2*cos3 + sin2*sin3)) - 0.0000066444*cos4*(cos2*cos3 + sin2*sin3) + 0.001581367*sin4*(cos2*cos3 + sin2*sin3) - 0.0000066444*cos4*cos5*(cos2*cos3 + sin2*sin3) - 0.973413*cos4*sin5*(cos2*cos3 + sin2*sin3) - 0.0558698*cos6*sin4*(cos2*cos3 + sin2*sin3) - 0.0013769*sin4*sin6*(cos2*cos3 + sin2*sin3);
-        Gq(3, 0) = 0.001581367*cos4*(cos2*sin3 - cos3*sin2) + 0.0000066444*sin4*(cos2*sin3 - cos3*sin2) + 0.973413*sin4*sin5*(cos2*sin3 - cos3*sin2) - 0.0558698*cos4*cos6*(cos2*sin3 - cos3*sin2) + 0.0000066444*cos5*sin4*(cos2*sin3 - cos3*sin2) - 0.0013769*cos4*sin6*(cos2*sin3 - cos3*sin2) - 0.0013769*cos5*cos6*sin4*(cos2*sin3 - cos3*sin2) + 0.0558698*cos5*sin4*sin6*(cos2*sin3 - cos3*sin2);
-        Gq(4, 0) = 0.0013769*cos6*(cos5*(cos2*cos3 + sin2*sin3) - cos4*sin5*(cos2*sin3 - cos3*sin2)) - 0.0558698*sin6*(cos5*(cos2*cos3 + sin2*sin3) - cos4*sin5*(cos2*sin3 - cos3*sin2)) - 0.0000066444*cos5*(cos2*cos3 + sin2*sin3) - 0.973413*sin5*(cos2*cos3 + sin2*sin3) - 0.973413*cos4*cos5*(cos2*sin3 - cos3*sin2) + 0.0000066444*cos4*sin5*(cos2*sin3 - cos3*sin2);
-        Gq(5, 0) = 0.0558698*sin4*sin6*(cos2*sin3 - cos3*sin2) - 0.0013769*sin6*(sin5*(cos2*cos3 + sin2*sin3) + cos4*cos5*(cos2*sin3 - cos3*sin2)) - 0.0558698*cos6*(sin5*(cos2*cos3 + sin2*sin3) + cos4*cos5*(cos2*sin3 - cos3*sin2)) - 0.0013769*cos6*sin4*(cos2*sin3 - cos3*sin2);
+        Eigen::Matrix<double, 6, 1> Gq_;
+        double b_Gq[6];
+        Gq_s(th2, th3, th4, th5, th6, b_Gq);
+        for(int i = 0; i < 6; ++i) {
+            Gq_(i, 0) = b_Gq[i];
+        }
 
-        return Gq;
+        return Gq_;
     }
 
     Eigen::Matrix<double, 6, 1> getQddot(States states) {
@@ -168,17 +185,23 @@ private:
         Eigen::Matrix<double, 6, 1> v1, v2;// = kp_ * getQ(currStates) - kd_ * getQdot(currStates);
         Eigen::Matrix<double, 6, 1> e;// = getQ(currStates) - getQ(desirStates);
         Eigen::Matrix<double, 6, 1> edot = getQdot(currStates) - getQdot(desirStates);
-
+        
         for(size_t i = 0; i < 6; ++i) {
-            e(i, 0) = angles::shortest_angular_distance(currStates.position[i], desirStates.position[i]); // to - from
+            e(i, 0) = angles::shortest_angular_distance(currStates.position[i], desirStates.position[i]); // to - from = desir - curr
         }
+
+        // cout << e << endl;
+        // cout << edot << endl;
+        // cout << (e - elast) / 0.001 << endl << endl;
+        // cout << endl;
 
         for(size_t i = 0; i < v1.rows(); ++i) {
-            v1(i, 0) = kp_(i, 0) * e(i, 0);
+            v1(i, 0) = kp_(i, 0) * e(i, 0); // desir - curr = -(curr - desir)
         }
         for(size_t i = 0; i < v2.rows(); ++i) {
-            v2(i, 0) = kd_(i, 0) * edot(i, 0);
+            v2(i, 0) = -kd_(i, 0) * edot(i, 0);//kd_(i, 0) * (e(i, 0) - elast(i, 0)) / 0.001;
         }
+        // elast = e;
         return v1 + v2 + getQddot(desirStates);
     }
 
@@ -186,11 +209,17 @@ public:
     FeedbackLinearization() {
         Eigen::Matrix<double, 6, 1> kp;
         Eigen::Matrix<double, 6, 1> kd;
-        kp << 30.0, 30.0, 30.0, 30.0, 30.0, 30.0;
-        kd << 3.0, 3.0, 3.0, 3.0, 3.0, 3.0;
+        // kp << 3000.0, 50000.0, 50000.0, 750.0, 5000.0, 100.0;
+        // kd << 2.0, 0.0, 0.0, 0.2, 1.0, 0.0;
+        kp << 50.0, 40.0, 40.0, 60.0, 40.0, 40.0;
+        // kd << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+        kd << 8.0, 8.0, 8.0, 8.0, 8.0, 8.0;
         kp_ = kp;
         kd_ = kd;
+
+        elast << 0, 0, 0, 0, 0, 0;
     }
+
 
 
     FeedbackLinearization(Eigen::Matrix<double, 6, 1> kp, Eigen::Matrix<double, 6, 1> kd) : kp_(kp), kd_(kd) {
@@ -203,9 +232,35 @@ public:
     }
 
     std::vector<double> computeInput(States desirStates, States currStates) {
-        Eigen::Matrix<double, 6, 1> tau = getMq(currStates) * getV(desirStates, currStates) + getCqdq(currStates) + getGq(currStates);
+        Eigen::Matrix<double, 6, 1> tau = getMq(currStates) * getV(desirStates, currStates) + getCqdq(currStates) * getQdot(currStates) + getGq(currStates);// + getMq(currStates) * getV(desirStates, currStates) + 
         
+        // cout << getQ(currStates) << endl;
+        // cout << getMq(currStates) << endl<<endl;;
+
+        // States s;
+        // s.position[0] = currStates.position[0];
+        // s.position[1] = currStates.position[1];
+        // s.position[2] = currStates.position[2];
+        // s.position[3] = currStates.position[3];
+        // s.position[4] = currStates.position[4];
+        // s.position[5] = currStates.position[5];
+        // cout << getMq(s) << endl << endl;
+        // for(int i = 0; i < 6; ++i) {
+        //     s.position[i] = 0;
+        //     s.velocity[i] = 0;
+        //     s.acceleration[i] = 0;
+        // }
+        // cout << getGq(desirStates) << endl<<endl;
+        // for(int i = 0; i < 3; ++i) {
+        //     if(tau(i, 0) > 39) tau(i, 0) = 39;
+        //     if(tau(i, 0) < -39) tau(i, 0) = -39;
+        // }
+        // for(int i = 3; i < 6; ++i) {
+        //     if(tau(i, 0) > 9) tau(i, 0) = 9;
+        //     if(tau(i, 0) < -9) tau(i, 0) = -9;
+        // }
         std::vector<double> results = {tau(0, 0), tau(1, 0), tau(2, 0), tau(3, 0), tau(4, 0), tau(5, 0)};
+        // std::vector<double> results = {0,0,0,0,0,0};
         return results;
     }
 
