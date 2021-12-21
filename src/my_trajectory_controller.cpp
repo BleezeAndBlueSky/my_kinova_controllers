@@ -24,13 +24,13 @@
 
 #include "my_kinova_controllers/common.hpp"
 #include "my_kinova_controllers/feedback_linearzation.hpp"
+// #include "my_kinova_controllers/GoalReach.hpp"
 
 #include <pluginlib/class_list_macros.hpp>
 
 using namespace std;
 
 namespace my_kinova_controllers {
-
 
 
 class MyTrajectoryController : public controller_interface::Controller<hardware_interface::EffortJointInterface>
@@ -116,7 +116,7 @@ public:
         // cout << "control_mode_: " << control_mode_ << endl;
 
         trajectory_tmp_ = *(trajectories_container_.readFromRT());
-
+        
         old_time_data_ = *(time_data_.readFromRT());
 
         // Update time data
@@ -131,7 +131,8 @@ public:
             current_states_.velocity[i] = joints_[i].getVelocity();
         }
 
-        bool check_if_reach_goal = true;
+        bool check_if_reach_goal = false;
+
         switch (control_mode_) {
         case HOLD_POSITION:
             // for(size_t i = 0; i < joints_.size(); ++i) {
@@ -153,18 +154,18 @@ public:
         }
         
         for(size_t i = 0; i < joints_.size(); ++i) {
-            double abse = std::abs(desired_states_.position[i] - current_states_.position[i]);
-            double absedot = std::abs(desired_states_.velocity[i] - current_states_.velocity[i]);
-            if(!(abse < 1e-2) || !(absedot < 1e-3)) {
+            double abs_err = std::abs(desired_states_.position[i] - current_states_.position[i]);
+            double abs_errDot = std::abs(desired_states_.velocity[i] - current_states_.velocity[i]);
+            if(!(abs_err < 9e-2) || !(abs_errDot < 2e-2)) {
                 check_if_reach_goal = false;
-                cout << "i      : " << i << endl;
-                cout << "abse   : " << abse << endl;
-                cout << "absedot: " << absedot << endl;
+                cout << "i         : " << i << endl;
+                cout << "abs_err   : " << abs_err << endl;
+                cout << "abs_errDot: " << abs_errDot << endl;
             }
         }
 
         if(check_if_reach_goal) {
-            ROS_INFO("Reach the goal!!");
+            ROS_INFO("Goal Reached!!");
 
             if(control_mode_ != HOLD_POSITION) {
                 for(size_t i = 0; i < joints_.size(); ++i) {
@@ -173,12 +174,18 @@ public:
                     desired_states_.acceleration[i] = 0;
                 }
             }
-
             control_mode_ = HOLD_POSITION;
             system_state_ = STANDBY;
 
+            // Send the request if Goal Reached
+            // ros::NodeHandle nh;
+            // ros::ServiceClient client = nh.serviceClient<GoalReach>("GoalReachJudge");
+            // GoalReach srv;
+            // srv.request.IsGoalReached = true;
+            // client.call(srv);
+            // ROS_INFO("Goal Reached Call has been sent successfully!");
+            
         }
-
 
         joints_input_effort_ = feedback_linearization_controller_.computeInput(desired_states_, current_states_);
         for(size_t i = 0; i < joints_.size(); ++i) {
@@ -192,7 +199,7 @@ public:
         // cout << "starting." << endl;
 
         TimeData time_data;
-        time_data.time   = time;
+        time_data.time = time;
         // time_data.uptime = ros::Time(0.0);
         time_data_.initRT(time_data);
 
@@ -254,6 +261,7 @@ protected:
         control_mode_ = TRAJECTORY_TRACKING;
         system_state_ = WORKING;
         trajectories_container_.writeFromNonRT(clone);
+        
     }
 
     States sampleFromTrajMsg(trajectory_msgs::JointTrajectory& msg, ros::Time& time, bool& if_reach_goal) {
@@ -267,35 +275,37 @@ protected:
             if_reach_goal = true;
         }
         else if(time < msg.header.stamp) { // before starting, hold position //try to reach the first point of the trajectory
-            for(size_t j = 0; j < joints_.size(); ++j) {
+            /*for(size_t j = 0; j < joints_.size(); ++j) {
                 desired_states_.position[j] = current_states_.position[j];//msg.points[0].positions[j];
                 desired_states_.velocity[j] = 0;
                 desired_states_.acceleration[j] = 0;
-            }
+            }*/
             if_reach_goal = false;
         }
         else {
-            for(size_t i = 0; i < msg.points.size() - 1; ++i) {
+            for(size_t i = 1; i < msg.points.size(); ++i) {
                 ros::Time point_time = msg.header.stamp + msg.points[i].time_from_start;
-                if(time > point_time) {
+                if(time < point_time) {
                     for(size_t j = 0; j < joints_.size(); ++j) {
-                        auto dt = (msg.points[i + 1].time_from_start - msg.points[i].time_from_start).toSec();
+                        auto dt = (msg.points[i].time_from_start - msg.points[i - 1].time_from_start).toSec();
                         if(dt > 1e-6) {
-                            auto dx_dt = (msg.points[i + 1].positions[j] - msg.points[i].positions[j]) / dt;
-                            auto dv_dt = (msg.points[i + 1].velocities[j] - msg.points[i].velocities[j]) / dt;
-                            auto da_dt = (msg.points[i + 1].accelerations[j] - msg.points[i].accelerations[j]) / dt;
+                            auto dx_dt = (msg.points[i].positions[j] - msg.points[i - 1].positions[j]) / dt;
+                            auto dv_dt = (msg.points[i].velocities[j] - msg.points[i - 1].velocities[j]) / dt;
+                            auto da_dt = (msg.points[i].accelerations[j] - msg.points[i - 1].accelerations[j]) / dt;
 
-                            desired_states_.position[j] = msg.points[i].positions[j] + dx_dt * (time - point_time).toSec();
-                            desired_states_.velocity[j] = msg.points[i].velocities[j] + dv_dt * (time - point_time).toSec();
-                            desired_states_.acceleration[j] = msg.points[i].accelerations[j] + da_dt * (time - point_time).toSec();
+                            desired_states.position[j] = msg.points[i].positions[j] + dx_dt * (time - point_time).toSec();
+                            desired_states.velocity[j] = msg.points[i].velocities[j] + dv_dt * (time - point_time).toSec();
+                            desired_states.acceleration[j] = msg.points[i].accelerations[j] + da_dt * (time - point_time).toSec();
                         }
                         else {
                             ROS_ERROR_STREAM("dt is almost zero, or wrong trajectory timestamp order, dt = " << dt);
                         }
-
                     }
+                    break;
                 }
+
             }
+            
             if_reach_goal = false;
         }
         desired_states_.time_from_start = time - msg.header.stamp;
